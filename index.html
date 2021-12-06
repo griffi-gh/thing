@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <script>
+    "use strict";
+
+    function getAbsolutePosition(e, x = 0, y = 0) {
+      const box = e.getBoundingClientRect();
+      return {
+        top: box.top + document.body.scrollTop + x,
+        left: box.left + document.body.scrollLeft + y,
+      };
+    }
+    function triggerMouseEvent(node, eventType) {
+      var clickEvent = document.createEvent ('MouseEvents');
+      clickEvent.initEvent (eventType, true, true);
+      node.dispatchEvent (clickEvent);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const cursor = document.getElementById('cursor');
+      const context = document.getElementById('context');
+      const main = document.querySelector('main');
+
+      let mouseOffset = [0,0];
+      let cursorDown = false;
+      let cursorActionDrag = false;
+
+      function getCurPos() { return getAbsolutePosition(cursor); }
+      function setCurPos(x, y) {
+        if(x instanceof Object) {
+          y = x.top;
+          x = x.left;
+        }
+        const bodyRect = document.body.getBoundingClientRect();
+        cursor.style.left = Math.min(Math.max(x, 0), bodyRect.right) + 'px';
+        cursor.style.top = Math.min(Math.max(y, 0), bodyRect.right) + 'px';
+      }
+      function curHovers() {
+        return Array.from(document.getElementsByClassName('hover')).filter(v => v !== cursor);
+      }
+      function curDown() {
+        curHovers().forEach(v => triggerMouseEvent(v, 'mousedown'));
+      }
+      function curUp() {
+        curHovers().forEach(v => triggerMouseEvent(v, 'mouseup'));
+      }
+      function _curClick() {
+        curHovers().forEach(v => triggerMouseEvent(v, 'click'));
+      }
+      function curClick() {
+        curDown();
+        setTimeout(() => {
+          curUp();
+          _curClick();
+        }, 50);
+      }
+
+      cursor.addEventListener('mousedown', event => {
+        event.stopPropagation();
+        cursorDown = true;
+        const cursorPos = getAbsolutePosition(cursor);
+        const posX = event.pageX - cursorPos.left;
+        const posY = event.pageY - cursorPos.top;
+        mouseOffset = [posX, posY];
+      });
+      addEventListener('mousemove', event => {
+        if(cursorDown) {
+          setCurPos(
+            event.pageX - mouseOffset[0],
+            event.pageY - mouseOffset[1]
+          );
+          const curPos = getCurPos();
+          Array.from(document.getElementsByClassName('hover')).forEach(v => {
+            v.classList.remove('hover');
+          });
+          Array.from(document.elementsFromPoint(curPos.left, curPos.top)).forEach(v => {
+            v.classList.add('hover');
+          });
+        }
+      });
+      addEventListener('mouseup', event => {
+        if(cursorDown) {
+          event.stopPropagation();
+          cursorDown = false;
+        }
+      });
+      cursor.addEventListener('contextmenu', event => {
+        event.preventDefault();
+        context.style.left = event.pageX + 'px';
+        context.style.top = event.pageY + 'px';
+        context.classList.remove('hide');
+      });
+      addEventListener('click', event => {
+        context.classList.add('hide');
+      });
+      Array.from(context.getElementsByClassName('item')).forEach(item => {
+        const action = item.dataset.action;
+        const actions = {
+          click: () => curClick(),
+          drag: () => curDown(),
+          drop: () => curUp(),
+          delete: () => {
+            curHovers().forEach(v => v.classList.remove('hover'));
+            cursor.style.opacity = 0;
+            cursor.style.transform = 'scale(0.5)'
+            setTimeout(() => {
+              cursor.style.left = '50%';
+              cursor.style.top = '50%';
+              cursor.style.transform = '';
+              cursor.style.opacity = 1;
+            }, 2000);
+          }
+        }
+        item.addEventListener('click', actions[action]);
+      });
+
+      /*const onAnimationFrame = () => {
+        if(!cursorDown) {}
+        requestAnimationFrame(onAnimationFrame);
+      }
+      onAnimationFrame();*/
+    });
+  </script>
+  <style>
+    @font-face {
+      font-family: 'SegoeUI';
+      src: local('Segoe UI'), local('SegoeUI'), url(SegoeUI.woff) format("woff");
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+    body, html {
+      font-family: 'Segoe UI', 'SegoeUI', Tahoma, Geneva, Verdana, sans-serif;
+      font-size: .95rem;
+      min-height: 100vh;
+      margin: 0;
+      padding: 0;
+      overflow:hidden;
+    }
+    main {
+      position: absolute;
+      inset: 0;
+    }
+    main, main * {
+      cursor: grab;
+    }
+    /*overlay, prevents the user from clicking*/
+    main::after {
+      content: '';
+      z-index: 999;
+      position: absolute;
+      inset: 0;
+    }
+
+    #cursor {
+      cursor: grab;
+      position: absolute;
+      z-index: 1000;
+      top: 50%;
+      left: 50%;
+      display: block;
+      width: 32px;
+      height: 32px;
+      transform-origin: 0 0;
+      transition: transform 1s, opacity 1s;
+    }
+    #cursor:active {
+      cursor: grabbing;
+    }
+    #context {
+      position: absolute;
+      z-index: 1001;
+      cursor: unset;
+      display: inline-flex;
+      flex-direction: column;
+      border: 1px solid #a0a0a0;
+      background: #eeeeee;
+      padding: 3px 0;
+      font-size: .9em;
+    }
+    #context.hide {
+      display: none;
+    }
+    #context * {
+      user-select: none;
+    }
+    #context > .item {
+      padding: 2px 6px;
+    }
+    #context > .item:hover {
+      background: white;
+    }
+
+    button, input[type="button"] {
+      background: #e1e1e1;
+      border: 1px solid #808080;
+      border-radius: 0px;
+      padding: 5px 10px;
+      transition: all .25s;
+    }
+    :is(button, input[type="button"]).hover {
+      background: #e5f1fb;
+      border-color: #0078d7;
+    }
+    :is(button, input[type="button"]).active {
+      border-color: #62a2e4;
+    }
+  </style>
+</head>
+<body>
+  <img id="cursor" src="cursor.png" draggable="false">
+  <div id="context" class="hide">
+    <div class="item" data-action="click">Click</div>
+    <div class="item" data-action="drag">Start dragging</div>
+    <div class="item" data-action="drop">Drop</div>
+    <div class="item" data-action="delete">Delete</div>
+  </div>
+  <main>
+    <button type="button" onclick="alert('Hi!')" style="margin: 2rem;">Button</button>
+  </main>
+</body>
+</html>
