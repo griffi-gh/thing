@@ -49,9 +49,12 @@
         return Array.from(document.getElementsByClassName('hover')).filter(v => v !== cursor);
       }
       function curDown() {
-        curHovers().forEach(v => triggerMouseEvent(v, 'mousedown'));
+        const hovers = curHovers();
+        hovers.forEach(v => v.classList.add('active'));
+        hovers.forEach(v => triggerMouseEvent(v, 'mousedown'));
       }
       function curUp() {
+        Array.from(document.getElementsByClassName('active')).forEach(v => v.classList.remove('active'));
         curHovers().forEach(v => triggerMouseEvent(v, 'mouseup'));
       }
       function _curClick() {
@@ -62,7 +65,7 @@
         setTimeout(() => {
           curUp();
           _curClick();
-        }, 50);
+        }, 100);
       }
 
       const mouseDownEvent = (event) => {
@@ -231,7 +234,8 @@
       background: #e5f1fb;
       border-color: #0078d7;
     }
-    :is(button, input[type="button"]).active {
+    body :is(button, input[type="button"]).active {
+      background: #c9e0f7;
       border-color: #62a2e4;
     }
   </style>
