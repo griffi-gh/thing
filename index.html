@@ -20,6 +20,11 @@
       clickEvent.initEvent (eventType, true, true);
       node.dispatchEvent (clickEvent);
     }
+    function populatePageCoords(event) {
+      const t = event.changedTouches[0];
+      event.pageX = t.pageX;
+      event.pageY = t.pageY;
+    }
 
     document.addEventListener('DOMContentLoaded', () => {
       const cursor = document.getElementById('cursor');
@@ -60,15 +65,33 @@
         }, 50);
       }
 
-      cursor.addEventListener('mousedown', event => {
+      const mouseDownEvent = (event) => {
         event.stopPropagation();
         cursorDown = true;
         const cursorPos = getAbsolutePosition(cursor);
         const posX = event.pageX - cursorPos.left;
         const posY = event.pageY - cursorPos.top;
         mouseOffset = [posX, posY];
+      };
+      cursor.addEventListener('mousedown', mouseDownEvent);
+      cursor.addEventListener('touchstart', event => {
+        populatePageCoords(event);
+        mouseDownEvent(event);
       });
-      addEventListener('mousemove', event => {
+
+      const mouseUpEvent = (event) => {
+        if(cursorDown) {
+          event.stopPropagation();
+          cursorDown = false;
+        }
+      }
+      addEventListener('mouseup', mouseUpEvent);
+      addEventListener('touchend', event => {
+        populatePageCoords(event);
+        mouseUpEvent(event);
+      });
+
+      const moveEvent = (event) => {
         if(cursorDown) {
           setCurPos(
             event.pageX - mouseOffset[0],
@@ -82,13 +105,13 @@
             v.classList.add('hover');
           });
         }
+      };
+      addEventListener('mousemove', moveEvent);
+      addEventListener('touchmove', event => {
+        populatePageCoords(event);
+        moveEvent(event);
       });
-      addEventListener('mouseup', event => {
-        if(cursorDown) {
-          event.stopPropagation();
-          cursorDown = false;
-        }
-      });
+
       cursor.addEventListener('contextmenu', event => {
         event.preventDefault();
         context.style.left = event.pageX + 'px';
